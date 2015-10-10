@@ -17,20 +17,27 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define apFLO_DEBUG
+
 #ifndef apFLOLIB_H
 #define apFLOLIB_H
 
 #include <stdint.h>
 
-typedef uint32_t sinflo;
-typedef uint64_t dubflo;
+typedef union{
+    uint32_t i;
+    float    f;
+} sinflo; /* single-precision float */
 
-/* constants */
-enum sign{
-    PLUS  = 0,
-    MINUS = 1
+typedef union{
+    uint64_t i;
+    double   f;
+} dubflo; /* double-precision float */
+
+enum bits{
+    SIN_SIGN =  1, SIN_EXPO =  8, SIN_MANT = 23,
+    DUB_SIGN =  1, DUB_EXPO = 11, DUB_MANT = 52,
 };
-
 /* IEEE Floating Point Format
 +--------+----------+-------------+-------------+
 | Symbol | Purpose  | 32-bit Size | 64-bit Size |
@@ -39,21 +46,15 @@ enum sign{
 | e      | Exponent | 08          | 11          |
 | m      | Mantissa | 23          | 52          |
 +--------+----------+-------------+-------------+
- */
-
-enum bits{
-    sin_sign =  1, sin_mant = 23, sin_expo =  8,
-    dub_sign =  1, dub_mant = 52, dub_expo = 11,
-};
-/* end of constants */
+*/
 
 /* debug section */
 #ifdef apFLO_DEBUG
+
 #include <stdio.h>
 #include <string.h>
-#endif
 
-char *strrev(char *s)
+static char *strrev(char *s)
 {
     size_t i, j;
     char t;
@@ -65,31 +66,77 @@ char *strrev(char *s)
     return s;
 }
 
-void printb(dubflo d)
+static void printb(uint64_t d, size_t width)
 {
     size_t i = 0;
     char b[(8 * sizeof(d)) + 1];
     do b[i++] = '0' + (d % 2);
     while(d /= 2);
     b[i] = '\0';
+    i=strlen(b);
+    while(i++ < width) putchar('0');
     printf("%s", strrev(b));
 }
+#endif
 /* end of debug section */
 
-sinflo dec2sin(enum sign sn, unsigned long long whole, unsigned long long fract)
+sinflo dec2sin(float f)
 {
-    sinflo flo, s, e, m, tmp;
-    unsigned i;
 
-    if(!whole && !fract) return (sinflo)0; /* denormalised form */
+#ifdef apFLO_DEBUG
+    sinflo flo;
+    uint32_t shift, s, e, m;
 
-    flo = 0;
-    s   = sn;
+    flo.f = f;
+    shift = (8 * sizeof(flo)) - SIN_MANT;
+    m = (flo.i << shift) >> shift; /* mantissa */
 
-    for(i = 0, tmp = whole; tmp; tmp >>= 1) ++i;
+    flo.i >>= SIN_MANT;
+    shift = (8 * sizeof(flo)) - SIN_EXPO;
+    e = (flo.i << shift) >> shift; /* exponent */
 
-    flo |= s << ((8 * sizeof(flo)) - sin_sign); /* sign stored */
-    return flo;
+    flo.i >>= SIN_EXPO;
+    shift = (8 * sizeof(flo)) - SIN_SIGN;
+    s = (flo.i << shift) >> shift; /* sign */
+
+    printf("\n%.2f =", f);
+    printf("\nS: "); printb(s, SIN_SIGN);
+    printf("\nE: "); printb(e, SIN_EXPO);
+    printf("\nM: "); printb(m, SIN_MANT);
+    puts("\n");
+#endif
+
+    return (sinflo) f;
 }
+
+dubflo dec2dub(double f)
+{
+
+#ifdef apFLO_DEBUG
+    dubflo flo;
+    uint64_t shift, s, e, m;
+
+    flo.f = f;
+    shift = (8 * sizeof(flo)) - DUB_MANT;
+    m = (flo.i << shift) >> shift; /* mantissa */
+
+    flo.i >>= DUB_MANT;
+    shift = (8 * sizeof(flo)) - DUB_EXPO;
+    e = (flo.i << shift) >> shift; /* exponent */
+
+    flo.i >>= DUB_EXPO;
+    shift = (8 * sizeof(flo)) - DUB_SIGN;
+    s = (flo.i << shift) >> shift; /* sign */
+
+    printf("\n%.2lf =", f);
+    printf("\nS: "); printb(s, DUB_SIGN);
+    printf("\nE: "); printb(e, DUB_EXPO);
+    printf("\nM: "); printb(m, DUB_MANT);
+    puts("\n");
+#endif
+
+    return (dubflo) f;
+}
+
 #endif
 /* end of ifields.h */
