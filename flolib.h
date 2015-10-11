@@ -67,38 +67,29 @@ static void printb(uint64_t d, size_t width)
 */
 
 /* single-precision code */
-typedef union{
-    uint32_t i;
-    float    f;
-} sinflo;
-
 enum single_bits{
     SIN_SIGN =  1, SIN_EXPO =  8, SIN_MANT = 23,
 };
+
+typedef union{
+    float f;
+    struct{
+        uint32_t m: SIN_MANT;
+        uint32_t e: SIN_EXPO;
+        uint32_t s: SIN_SIGN;
+    } i; /* reverse ordering for little-endian arch (x86) */
+} sinflo;
 
 sinflo dec2sin(float f)
 {
 
 #ifdef apFLO_DEBUG
     sinflo flo;
-    uint32_t shift, s, e, m;
-
     flo.f = f;
-    shift = (8 * sizeof(flo)) - SIN_MANT;
-    m = (flo.i << shift) >> shift; /* mantissa */
-
-    flo.i >>= SIN_MANT;
-    shift = (8 * sizeof(flo)) - SIN_EXPO;
-    e = (flo.i << shift) >> shift; /* exponent */
-
-    flo.i >>= SIN_EXPO;
-    shift = (8 * sizeof(flo)) - SIN_SIGN;
-    s = (flo.i << shift) >> shift; /* sign */
-
-    printf("\n%.2f =", f);
-    printf("\nS: "); printb(s, SIN_SIGN);
-    printf("\nE: "); printb(e, SIN_EXPO);
-    printf("\nM: "); printb(m, SIN_MANT);
+    printf("\n%f =", f);
+    printf("\nS: "); printb(flo.i.s, SIN_SIGN);
+    printf("\nE: "); printb(flo.i.e, SIN_EXPO);
+    printf("\nM: "); printb(flo.i.m, SIN_MANT);
     puts("\n");
 #endif
 
@@ -110,63 +101,82 @@ float sin2dec(sinflo flo)
 
 #ifdef apFLO_DEBUG
     float f;
-    uint32_t shift, s, e, m;
-
     f = flo.f;
-    shift = (8 * sizeof(flo)) - SIN_MANT;
-    m = (flo.i << shift) >> shift; /* mantissa */
-
-    flo.i >>= SIN_MANT;
-    shift = (8 * sizeof(flo)) - SIN_EXPO;
-    e = (flo.i << shift) >> shift; /* exponent */
-
-    flo.i >>= SIN_EXPO;
-    shift = (8 * sizeof(flo)) - SIN_SIGN;
-    s = (flo.i << shift) >> shift; /* sign */
-
-    printf("\nS: "); printb(s, SIN_SIGN);
-    printf("\nE: "); printb(e, SIN_EXPO);
-    printf("\nM: "); printb(m, SIN_MANT);
-    printf("\n = %.2f\n\n", f);
+    printf("\nS: "); printb(flo.i.s, SIN_SIGN);
+    printf("\nE: "); printb(flo.i.e, SIN_EXPO);
+    printf("\nM: "); printb(flo.i.m, SIN_MANT);
+    printf("\n = %f\n\n", f);
 #endif
 
     return f;
 }
+
+sinflo sin_add(sinflo a, sinflo b)
+{
+    sinflo t;
+
+    if(a.f == 0.0f) return b;
+    else if(b.f == 0.0f) return a; /* 0 is special, denormalised */
+
+    if(a.i.e < b.i.e) t = a, a = b, b = t;
+
+    a.i.m >>= 1;
+    b.i.m >>= 1; /* shifting to accomodate carry/borrow */
+
+    if(a.i.e != b.i.e) b.i.m |= (1 << (SIN_MANT - 1)); /* inserting MSB */
+
+    b.i.m >>= (a.i.e - b.i.e);
+    t.i.e = b.i.e;
+    b.i.e = a.i.e;
+
+    if(a.i.s == b.i.s){
+        b.i.m += a.i.m;
+        if((b.i.m >> (SIN_MANT - 1)) && (t.i.e == b.i.e)) b.i.e += 1;
+        else if(b.i.m >> (SIN_MANT - 1) || (t.i.e == b.i.e)){
+            b.i.e  += 1;
+            b.i.m <<= 1;
+            b.i.m >>= 1;
+        }
+        else b.i.m <<= 1;
+    }
+    else{
+        b.i.m = (a.i.s ? (b.i.m - a.i.m) : (a.i.m - b.i.m));
+        if(b.i.m >> (SIN_MANT - 1)){
+            b.i.e -= 1;
+            b.i.m = ~b.i.m + 1;
+            b.i.s = !b.i.s;
+        }
+        else b.i.m <<= 1;
+    }
+
+    return b;
+}
 /* end of single-precision code */
 
 /* double-precision code */
-typedef union{
-    uint64_t i;
-    double   f;
-} dubflo;
-
 enum double_bits{
     DUB_SIGN =  1, DUB_EXPO = 11, DUB_MANT = 52,
 };
+
+typedef union{
+    double f;
+    struct{
+        uint64_t m: DUB_MANT;
+        uint64_t e: DUB_EXPO;
+        uint64_t s: DUB_SIGN;
+    } i; /* reverse ordering for little-endian arch (x86) */
+} dubflo;
 
 dubflo dec2dub(double f)
 {
 
 #ifdef apFLO_DEBUG
     dubflo flo;
-    uint64_t shift, s, e, m;
-
     flo.f = f;
-    shift = (8 * sizeof(flo)) - DUB_MANT;
-    m = (flo.i << shift) >> shift; /* mantissa */
-
-    flo.i >>= DUB_MANT;
-    shift = (8 * sizeof(flo)) - DUB_EXPO;
-    e = (flo.i << shift) >> shift; /* exponent */
-
-    flo.i >>= DUB_EXPO;
-    shift = (8 * sizeof(flo)) - DUB_SIGN;
-    s = (flo.i << shift) >> shift; /* sign */
-
-    printf("\n%.2f =", f);
-    printf("\nS: "); printb(s, DUB_SIGN);
-    printf("\nE: "); printb(e, DUB_EXPO);
-    printf("\nM: "); printb(m, DUB_MANT);
+    printf("\n%f =", f);
+    printf("\nS: "); printb(flo.i.s, DUB_SIGN);
+    printf("\nE: "); printb(flo.i.e, DUB_EXPO);
+    printf("\nM: "); printb(flo.i.m, DUB_MANT);
     puts("\n");
 #endif
 
@@ -178,24 +188,11 @@ double dub2dec(dubflo flo)
 
 #ifdef apFLO_DEBUG
     double f;
-    uint64_t shift, s, e, m;
-
     f = flo.f;
-    shift = (8 * sizeof(flo)) - DUB_MANT;
-    m = (flo.i << shift) >> shift; /* mantissa */
-
-    flo.i >>= DUB_MANT;
-    shift = (8 * sizeof(flo)) - DUB_EXPO;
-    e = (flo.i << shift) >> shift; /* exponent */
-
-    flo.i >>= DUB_EXPO;
-    shift = (8 * sizeof(flo)) - DUB_SIGN;
-    s = (flo.i << shift) >> shift; /* sign */
-
-    printf("\nS: "); printb(s, DUB_SIGN);
-    printf("\nE: "); printb(e, DUB_EXPO);
-    printf("\nM: "); printb(m, DUB_MANT);
-    printf("\n = %.2f\n\n", f);
+    printf("\nS: "); printb(flo.i.s, DUB_SIGN);
+    printf("\nE: "); printb(flo.i.e, DUB_EXPO);
+    printf("\nM: "); printb(flo.i.m, DUB_MANT);
+    printf("\n = %f\n\n", f);
 #endif
 
     return f;

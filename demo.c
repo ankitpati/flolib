@@ -5,11 +5,14 @@
 
 int main()
 {
-    double f;
-    dubflo sf;
-    printf("Enter a float value:\n");
-    scanf(" %lf%*c", &f);
-    sf=dec2dub(f);
-    f=dub2dec(sf);
+    float e, f;
+    sinflo se, sf;
+    printf("Enter 2 float values:\n");
+    scanf(" %f %f%*c", &e, &f);
+    se=dec2sin(e);
+    sf=dec2sin(f);
+    se=sin_add(se, sf);
+    puts(" =");
+    dec2sin(se.f);
     return 0;
 }
