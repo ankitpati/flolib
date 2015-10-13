@@ -49,8 +49,7 @@ static void printb(uint64_t d, size_t width)
     do b[i++] = '0' + (d % 2);
     while(d /= 2);
     b[i] = '\0';
-    i=strlen(b);
-    while(i++ < width) putchar('0');
+    for(i=strlen(b); i < width; ++i) putchar('0');
     printf("%s", strrev(b));
 }
 #endif
@@ -114,42 +113,56 @@ float sin2dec(sinflo flo)
 sinflo sin_add(sinflo a, sinflo b)
 {
     sinflo t;
+    int eequal;
 
     if(a.f == 0.0f) return b;
-    else if(b.f == 0.0f) return a; /* 0 is special, denormalised */
+    else if(b.f == 0.0f) return a; /* zero is special, denormalised */
 
     if(a.i.e < b.i.e) t = a, a = b, b = t;
 
     a.i.m >>= 1;
-    b.i.m >>= 1; /* shifting to accomodate carry/borrow */
+    b.i.m >>= 1; /* shifting to accomodate MSB */
 
     if(a.i.e != b.i.e) b.i.m |= (1 << (SIN_MANT - 1)); /* inserting MSB */
 
     b.i.m >>= (a.i.e - b.i.e);
-    t.i.e = b.i.e;
+    eequal = (a.i.e == b.i.e);
     b.i.e = a.i.e;
 
     if(a.i.s == b.i.s){
         b.i.m += a.i.m;
-        if((b.i.m >> (SIN_MANT - 1)) && (t.i.e == b.i.e)) b.i.e += 1;
-        else if(b.i.m >> (SIN_MANT - 1) || (t.i.e == b.i.e)){
-            b.i.e  += 1;
+        if((b.i.m >> (SIN_MANT - 1)) && eequal) ++b.i.e;
+        else if(b.i.m >> (SIN_MANT - 1) || eequal){
+            ++b.i.e;
             b.i.m <<= 1;
             b.i.m >>= 1;
         }
         else b.i.m <<= 1;
     }
     else{
-        b.i.m = (a.i.s ? (b.i.m - a.i.m) : (a.i.m - b.i.m));
-        if(b.i.m >> (SIN_MANT - 1)){
-            b.i.e -= 1;
+        b.i.s = a.i.s;
+        b.i.m = a.i.m - b.i.m;
+        if((b.i.m >> (SIN_MANT - 1)) && eequal){
+            --b.i.e;
             b.i.m = ~b.i.m + 1;
             b.i.s = !b.i.s;
+        }
+        else if(b.i.m >> (SIN_MANT - 1) || eequal){
+            --b.i.e;
+            b.i.m = ~b.i.m + 1;
+            b.i.m <<= 1;
+            b.i.m >>= 1;
         }
         else b.i.m <<= 1;
     }
 
     return b;
+}
+
+sinflo sin_sub(sinflo a, sinflo b)
+{
+    b.i.s = !b.i.s;
+    return sin_add(a, b);
 }
 /* end of single-precision code */
 
@@ -196,6 +209,61 @@ double dub2dec(dubflo flo)
 #endif
 
     return f;
+}
+
+dubflo dub_add(dubflo a, dubflo b)
+{
+    dubflo t;
+    int eequal;
+
+    if(a.f == 0.0f) return b;
+    else if(b.f == 0.0f) return a; /* zero is special, denormalised */
+
+    if(a.i.e < b.i.e) t = a, a = b, b = t;
+
+    a.i.m >>= 1;
+    b.i.m >>= 1; /* shifting to accomodate MSB */
+
+    if(a.i.e != b.i.e) b.i.m |= (1l << (DUB_MANT - 1)); /* inserting MSB */
+
+    b.i.m >>= (a.i.e - b.i.e);
+    eequal = (a.i.e == b.i.e);
+    b.i.e = a.i.e;
+
+    if(a.i.s == b.i.s){
+        b.i.m += a.i.m;
+        if((b.i.m >> (DUB_MANT - 1)) && eequal) ++b.i.e;
+        else if(b.i.m >> (DUB_MANT - 1) || eequal){
+            ++b.i.e;
+            b.i.m <<= 1;
+            b.i.m >>= 1;
+        }
+        else b.i.m <<= 1;
+    }
+    else{
+        b.i.s = a.i.s;
+        b.i.m = a.i.m - b.i.m;
+        if((b.i.m >> (DUB_MANT - 1)) && eequal){
+            --b.i.e;
+            b.i.m = ~b.i.m + 1;
+            b.i.s = !b.i.s;
+        }
+        else if(b.i.m >> (DUB_MANT - 1) || eequal){
+            --b.i.e;
+            b.i.m = ~b.i.m + 1;
+            b.i.m <<= 1;
+            b.i.m >>= 1;
+        }
+        else b.i.m <<= 1;
+    }
+
+    return b;
+}
+
+dubflo dub_sub(dubflo a, dubflo b)
+{
+    b.i.s = !b.i.s;
+    return dub_add(a, b);
 }
 /* end of double-precision code */
 
