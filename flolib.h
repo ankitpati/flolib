@@ -95,10 +95,10 @@ sinflo dec2sin(float f)
 
 float sin2dec(sinflo flo)
 {
-
-#ifdef apFLO_DEBUG
     float f;
     f = flo.f;
+
+#ifdef apFLO_DEBUG
     printf("\nS: "); printb(flo.i.s, SIN_SIGN);
     printf("\nE: "); printb(flo.i.e, SIN_EXPO);
     printf("\nM: "); printb(flo.i.m, SIN_MANT);
@@ -196,10 +196,10 @@ dubflo dec2dub(double f)
 
 double dub2dec(dubflo flo)
 {
-
-#ifdef apFLO_DEBUG
     double f;
     f = flo.f;
+
+#ifdef apFLO_DEBUG
     printf("\nS: "); printb(flo.i.s, DUB_SIGN);
     printf("\nE: "); printb(flo.i.e, DUB_EXPO);
     printf("\nM: "); printb(flo.i.m, DUB_MANT);
