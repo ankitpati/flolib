@@ -266,4 +266,4 @@ dubflo dub_sub(dubflo a, dubflo b)
 /* end of double-precision code */
 
 #endif
-/* end of ifields.h */
+/* end of flolib.h */
