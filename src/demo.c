@@ -1,7 +1,8 @@
+/* demo.c */
 #define apFLO_DEBUG
 
 #include <stdio.h>
-#include "flolib.h"
+#include "libs/flolib.h"
 
 int main()
 {
@@ -72,3 +73,4 @@ int main()
 
     return 0;
 }
+/* end of demo.c */
