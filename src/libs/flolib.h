@@ -20,6 +20,7 @@
 #ifndef apFLOLIB_H
 #define apFLOLIB_H
 
+#include <stdlib.h>
 #include <stdint.h>
 
 /* debug section */
@@ -71,10 +72,18 @@ enum single_bits{
 typedef union{
     float f;
     struct{
+
+#if BYTE_ORDER == LITTLE_ENDIAN
         uint32_t m: SIN_MANT;
         uint32_t e: SIN_EXPO;
         uint32_t s: SIN_SIGN;
-    } i; /* reverse ordering for little-endian arch (x86) */
+#else
+        uint32_t s: SIN_SIGN;
+        uint32_t e: SIN_EXPO;
+        uint32_t m: SIN_MANT;
+#endif
+
+    } i;
 } sinflo;
 
 sinflo dec2sin(float f)
@@ -172,10 +181,18 @@ enum double_bits{
 typedef union{
     double f;
     struct{
+
+#if BYTE_ORDER == LITTLE_ENDIAN
         uint64_t m: DUB_MANT;
         uint64_t e: DUB_EXPO;
         uint64_t s: DUB_SIGN;
-    } i; /* reverse ordering for little-endian arch (x86) */
+#else
+        uint64_t s: DUB_SIGN;
+        uint64_t e: DUB_EXPO;
+        uint64_t m: DUB_MANT;
+#endif
+
+    } i;
 } dubflo;
 
 dubflo dec2dub(double f)
